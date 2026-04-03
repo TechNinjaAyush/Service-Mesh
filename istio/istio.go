@@ -21,7 +21,7 @@ var graphResponse model.GraphResponse
 
 var mu sync.Mutex
 
-func PollingIstio(js nats.JetStreamContext, nc *nats.Conn) {
+func PollingIstio(js nats.JetStreamContext, nc *nats.Conn, jetStreamEnables bool) {
 	graphType := os.Getenv("graphType")
 	duration := os.Getenv("duration")
 	namespaces := os.Getenv("namespaces")
@@ -113,17 +113,23 @@ func PollingIstio(js nats.JetStreamContext, nc *nats.Conn) {
 		data, err := json.Marshal(graphResponse)
 
 		if err != nil {
-			log.Fatalf("Error in marshalling graphResponse %v", err)
+			log.Println("Error in marshalling graphResponse", err)
+
 		}
 
-		// publishing graph data to nats
+		// publishing graph data to nats using jetstream Enabled
 
-		err = nc.Publish("graph.sent", data)
+		if jetStreamEnables == true {
+			_, err = js.Publish("graph.snapshot", data)
+			log.Println("Send graph snapshot to nats using jetstream enabled")
+			print("length of data is:", len(data))
 
-		if err != nil {
-			log.Println("Error in sending graph response to nats:", err)
 		} else {
-			log.Println("Snapshot send:", len(data), "bytes")
+
+			err = nc.Publish("graph.snapshot", data)
+			log.Println("Send graph snapshot using default nats")
+			print("length of data is:", len(data))
+
 		}
 
 	}
