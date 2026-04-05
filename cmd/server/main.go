@@ -56,16 +56,10 @@ func main() {
 		})
 
 		if err != nil && err != nats.ErrStreamNameAlreadyInUse {
-			log.Println("jetStrea creation failed fallback to core nats")
+			log.Println("jetStream creation failed fallback to core nats;", err)
 			jetstreamEnables = false
 		}
 
-	}
-
-	if err != nil {
-		log.Printf("Error in jetstream connection %v\n", err)
-
-		jetstreamEnables = false
 	}
 
 	// this function will run in background so we can periodically pool the lates graph
