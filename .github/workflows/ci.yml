@@ -19,15 +19,15 @@ jobs:
       - run: go tool cover -func=coverage.out
 
   lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-      - uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+    - uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.60.3
 
   build:
     runs-on: ubuntu-latest
