@@ -53,7 +53,7 @@ func PollingIstio(js nats.JetStreamContext, nc *nats.Conn, jetStreamEnables bool
 
 	kubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	var clientset *kubernetes.Clientset
+	var clientset kubernetes.Interface
 	if err != nil {
 		log.Printf("Failed to build kubeconfig: %v", err)
 	} else {
@@ -164,7 +164,7 @@ func GetIstioGraph(c *gin.Context) {
 	c.JSON(http.StatusOK, graphResponse)
 
 }
-func fetchPodsForApp(clientset *kubernetes.Clientset, namespace, app string) ([]model.Pods, error) {
+func fetchPodsForApp(clientset kubernetes.Interface, namespace, app string) ([]model.Pods, error) {
 
 	var result []model.Pods
 
