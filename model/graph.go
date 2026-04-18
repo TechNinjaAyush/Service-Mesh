@@ -26,7 +26,21 @@ type NodeData struct {
 	Traffic      []Traffic     `json:"traffic,omitempty"`
 	HealthData   interface{}   `json:"healthData"`
 	IsRoot       bool          `json:"isRoot,omitempty"`
+	Pod          []Pods        `json:"pod,omitempty"`
 }
+
+type Pods struct {
+	Name      string       `json:"name"`
+	Container []Containers `json:"container"`
+}
+
+type Containers struct {
+	ContainerName string `json:"containerName,omitempty"`
+	Logs          string `json:"logs,omitempty"`
+}  
+
+
+
 
 type DestService struct {
 	Cluster   string `json:"cluster"`

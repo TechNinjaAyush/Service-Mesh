@@ -9,12 +9,16 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"service_mesh/model"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nats-io/nats.go"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var graphResponse model.GraphResponse
@@ -26,6 +30,7 @@ func PollingIstio(js nats.JetStreamContext, nc *nats.Conn, jetStreamEnables bool
 	duration := os.Getenv("duration")
 	namespaces := os.Getenv("namespaces")
 	BASE_URL := os.Getenv("BASE_URL")
+	// apiBase := strings.TrimSuffix(BASE_URL, "/namespaces/graph")
 
 	// building kiali url
 
@@ -40,15 +45,27 @@ func PollingIstio(js nats.JetStreamContext, nc *nats.Conn, jetStreamEnables bool
 	q.Set("duration", duration)
 	q.Set("graphType", graphType)
 
-	u.RawQuery = q.Encode()
+	u.RawQuery = q.Encode()  
 
 	FINAL_KIALI_URL := u.String()
+
+	fmt.Printf("kiali url is %s\n", FINAL_KIALI_URL)
+
+	kubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	var clientset *kubernetes.Clientset
+	if err != nil {
+		log.Printf("Failed to build kubeconfig: %v", err)
+	} else {
+		clientset, err = kubernetes.NewForConfig(config)
+		if err != nil {
+			log.Printf("Failed to create kubernetes client: %v", err)
+		}
+	}
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
-
-	fmt.Printf("kiali url is %s\n", FINAL_KIALI_URL)
 
 	//Building request body
 
@@ -93,23 +110,24 @@ func PollingIstio(js nats.JetStreamContext, nc *nats.Conn, jetStreamEnables bool
 			log.Fatalf("Error in unmarshalling graph response %v", err)
 		}
 
-		//sending response to user
-		fmt.Printf("Graphresponse is %v", graphResponse)
+		for i := range graphResponse.Elements.Nodes {
+			node := &graphResponse.Elements.Nodes[i]
+			if node.Data.App != "" && node.Data.Namespace != "" && clientset != nil {
+				fmt.Printf("Pods fetching are started\n")
+				pods, err := fetchPodsForApp(clientset, node.Data.Namespace, node.Data.App)
+				if err != nil {
+					log.Printf("Error fetching pods for app %s in namespace %s: %v\n", node.Data.App, node.Data.Namespace, err)
+					continue
+				}
+				node.Data.Pod = pods
+			}
+		}
 
-		// for _, Edge := range graphResponse.Elements.Edges {
-		// 	fmt.Printf("Source :%s\n", Edge.Data.Source)
-		// 	fmt.Printf("Destination :%s\n", Edge.Data.Target)
+		fmt.Printf("Graphnode are  %v\n\n", graphResponse.Elements.Nodes)
 
-		// }
+		fmt.Printf("GraphEdges are  %v\n\n", graphResponse.Elements.Edges)
 
-		// for _, Node := range graphResponse.Elements.Nodes {
-		// 	fmt.Printf("node is %s\n", Node.Data.ID)
-		// 	fmt.Printf("node namespace is %s\n", Node.Data.Namespace)
-		// }
-
-		// converting graph_response into bytes format
-
-		fmt.Println("GraphResponse is:\n", graphResponse)
+		// fmt.Println("Poda are::\n", graphResponse.Elements.Nodes)
 		data, err := json.Marshal(graphResponse)
 
 		if err != nil {
@@ -140,13 +158,40 @@ func GetIstioGraph(c *gin.Context) {
 
 	//calling istio graph
 
-	var FinalGraphResponse model.GraphResponse
-
 	mu.Lock()
 	defer mu.Unlock()
 
-	FinalGraphResponse = graphResponse
+	c.JSON(http.StatusOK, graphResponse)
 
-	c.JSON(http.StatusAccepted, gin.H{"message": FinalGraphResponse})
+}
+func fetchPodsForApp(clientset *kubernetes.Clientset, namespace, app string) ([]model.Pods, error) {
 
+	var result []model.Pods
+
+	podlist, err := clientset.CoreV1().
+		Pods(namespace).
+		List(context.TODO(), metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("app=%s", app), // ✅ filter here
+		})
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pod := range podlist.Items {
+
+		var containers []model.Containers
+		for _, c := range pod.Spec.Containers {
+			containers = append(containers, model.Containers{
+				ContainerName: c.Name,
+			})
+		}
+
+		result = append(result, model.Pods{
+			Name:      pod.Name,
+			Container: containers,
+		})
+	}
+
+	return result, nil
 }

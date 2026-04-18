@@ -1,0 +1,29 @@
+
+
+# Desiging ci pipeline is very important as we have to autimate build  ,test and check the servics  
+
+#in ci pipeline we have push code to particaulr branch and and when we push something on particular branch 
+# since u want to p[retest the code u pusb to particaulr branch so that why u need ci beforemerginr code to main branch to secure code qualit also check thvuna 
+
+
+name: CI Pipeline
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - run: go mod download   
+      - run : CGO_ENABLED=0 go build -o service-mesh  ./cmd/server 
+      - run : ./service-mesh
+     
+             
+
+
