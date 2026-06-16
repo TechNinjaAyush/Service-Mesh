@@ -30,17 +30,19 @@ type NodeData struct {
 }
 
 type Pods struct {
-	Name      string       `json:"name"`
-	Container []Containers `json:"container"`
+	Name          string       `json:"name"`
+	Status        string       `json:"status"`
+	Container     []Containers `json:"container"`
+	StatusMessage string       `json:"StatusMessage,omitempty"`
 }
 
 type Containers struct {
 	ContainerName string `json:"containerName,omitempty"`
 	Logs          string `json:"logs,omitempty"`
-}  
-
-
-
+	Status        string `json:"status,omitempty"`
+	Reason        string `json:"reason,omitempty"`
+	ExitCode      int32  `json:"exitCode,omitempty"`
+}
 
 type DestService struct {
 	Cluster   string `json:"cluster"`
@@ -78,4 +80,31 @@ type EdgeTraffic struct {
 type ResponseDetail struct {
 	Flags map[string]string `json:"flags"`
 	Hosts map[string]string `json:"hosts"`
+}
+
+type PodAlert struct {
+	IncidentID    string `json:"incidentId"`
+	PodName       string `json:"podName"`
+	Namespace     string `json:"namespace"`
+	App           string `json:"app"`
+	Status        string `json:"status"`
+	StatusMessage string `json:"statusMessage,omitempty"`
+	Reason        string `json:"reason,omitempty"`
+	Timestamp     int64  `json:"timestamp"`
+}
+
+type TrafficAlert struct {
+	IncidentID   string `json:"incidentId"`
+	Source       string `json:"source"`
+	Target       string `json:"target"`
+	ResponseCode string `json:"responseCode"`
+	Flag         string `json:"flag"`
+	Host         string `json:"host,omitempty"`
+	Protocol     string            `json:"protocol,omitempty"`
+	ResponseTime string            `json:"responseTime,omitempty"`
+	Rates        map[string]string `json:"rates,omitempty"`
+	FlagPercent  string            `json:"flagPercent,omitempty"`
+	IsMTLS       string            `json:"isMTLS,omitempty"`
+	Message      string            `json:"message"`
+	Timestamp    int64             `json:"timestamp"`
 }

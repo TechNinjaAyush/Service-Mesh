@@ -51,8 +51,9 @@ func main() {
 
 	if jetstreamEnables {
 		_, err = js.AddStream(&nats.StreamConfig{
-			Name:     "GRAPH",
-			Subjects: []string{"graph.snapshot"},
+			Name:      "GRAPH",
+			Subjects:  []string{"graph.snapshot", "pod.alert", "traffic.alert"},
+			Retention: nats.WorkQueuePolicy,
 		})
 
 		if err != nil && err != nats.ErrStreamNameAlreadyInUse {
@@ -65,6 +66,9 @@ func main() {
 	// this function will run in background so we can periodically pool the lates graph
 
 	go istio.PollingIstio(js, nc, jetstreamEnables)
+
+	// Start observer for pod status requests
+	go istio.StartPodStatusObserver(nc)
 
 	r.GET("/health", CheckHealth)
 
