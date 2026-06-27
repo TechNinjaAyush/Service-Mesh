@@ -52,10 +52,19 @@ func main() {
 	if jetstreamEnables {
 		_, err = js.AddStream(&nats.StreamConfig{
 			Name:      "GRAPH",
-			Subjects:  []string{"graph.snapshot", "pod.alert", "traffic.alert"},
+			Subjects:  []string{"graph.snapshot"},
 			Retention: nats.WorkQueuePolicy,
 		})
 
+		if err != nil && err != nats.ErrStreamNameAlreadyInUse {
+			log.Println("jetStream creation failed fallback to core nats;", err)
+			jetstreamEnables = false
+		}
+		_, err = js.AddStream(&nats.StreamConfig{
+			Name:      "TRAFFIC",
+			Subjects:  []string{"traffic.alert"},
+			Retention: nats.WorkQueuePolicy,
+		})
 		if err != nil && err != nats.ErrStreamNameAlreadyInUse {
 			log.Println("jetStream creation failed fallback to core nats;", err)
 			jetstreamEnables = false

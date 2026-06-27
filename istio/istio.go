@@ -369,8 +369,9 @@ func StartPodStatusObserver(nc *nats.Conn) {
 
 	_, err = nc.Subscribe("observer.pod.status", func(msg *nats.Msg) {
 		var req struct {
-			Action  string `json:"action"`
-			PodName string `json:"pod_name"`
+			Action      string `json:"action"`
+			PodName     string `json:"pod_name"`
+			ServiceName string `json:"service_name"`
 		}
 		if err := json.Unmarshal(msg.Data, &req); err != nil {
 			log.Printf("Error unmarshaling pod status request: %v", err)
@@ -378,7 +379,7 @@ func StartPodStatusObserver(nc *nats.Conn) {
 		}
 
 		if req.Action == "check_pod" && req.PodName != "" {
-			pod, err := fetchPodStatusDetails(clientset, req.PodName)
+			pod, err := fetchPodStatusDetails(clientset, req.PodName, req.ServiceName)
 			var resp []byte
 			if err != nil {
 				resp, _ = json.Marshal(map[string]string{"error": err.Error()})
@@ -419,10 +420,25 @@ func StartPodStatusObserver(nc *nats.Conn) {
 }
 
 type PodStatusResponse struct {
-	PodName           string             `json:"pod_name"`
-	Phase             string             `json:"phase"`
-	ContainerStatuses []ContainerDetails `json:"container_statuses"`
-	RecentEvents      []EventDetails     `json:"recent_events"`
+	PodName           string               `json:"pod_name"`
+	Phase             string               `json:"phase"`
+	ContainerStatuses []ContainerDetails   `json:"container_statuses"`
+	RecentEvents      []EventDetails       `json:"recent_events"`
+	ServiceMatch      *ServiceMatchDetails `json:"service_match,omitempty"`
+}
+
+type ServiceMatchDetails struct {
+	ServiceName     string            `json:"service_name"`
+	ServiceSelector map[string]string `json:"service_selector"`
+	PodLabels       map[string]string `json:"pod_labels"`
+	SelectorMatch   bool              `json:"selector_match"`
+	ServicePorts    []ServicePortInfo `json:"service_ports"`
+	PodPorts        []int32           `json:"pod_ports"`
+}
+
+type ServicePortInfo struct {
+	Port       int32  `json:"port"`
+	TargetPort string `json:"target_port"`
 }
 
 type ContainerDetails struct {
@@ -438,7 +454,7 @@ type EventDetails struct {
 	Message string `json:"message"`
 }
 
-func fetchPodStatusDetails(clientset kubernetes.Interface, podName string) (*PodStatusResponse, error) {
+func fetchPodStatusDetails(clientset kubernetes.Interface, podName string, serviceName string) (*PodStatusResponse, error) {
 	podlist, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{
 		FieldSelector: fmt.Sprintf("metadata.name=%s", podName),
 	})
@@ -497,11 +513,47 @@ func fetchPodStatusDetails(clientset kubernetes.Interface, podName string) (*Pod
 				}
 			}
 
+			var serviceMatch *ServiceMatchDetails
+			if serviceName != "" {
+				svc, err := clientset.CoreV1().Services(pod.Namespace).Get(context.TODO(), serviceName, metav1.GetOptions{})
+				if err == nil {
+					match := true
+					for k, v := range svc.Spec.Selector {
+						if pod.Labels[k] != v {
+							match = false
+							break
+						}
+					}
+					var ports []ServicePortInfo
+					for _, p := range svc.Spec.Ports {
+						ports = append(ports, ServicePortInfo{
+							Port:       p.Port,
+							TargetPort: p.TargetPort.String(),
+						})
+					}
+					var podPorts []int32
+					for _, c := range pod.Spec.Containers {
+						for _, p := range c.Ports {
+							podPorts = append(podPorts, p.ContainerPort)
+						}
+					}
+					serviceMatch = &ServiceMatchDetails{
+						ServiceName:     svc.Name,
+						ServiceSelector: svc.Spec.Selector,
+						PodLabels:       pod.Labels,
+						SelectorMatch:   match,
+						ServicePorts:    ports,
+						PodPorts:        podPorts,
+					}
+				}
+			}
+
 			return &PodStatusResponse{
 				PodName:           pod.Name,
 				Phase:             string(pod.Status.Phase),
 				ContainerStatuses: containers,
 				RecentEvents:      recentEvents,
+				ServiceMatch:      serviceMatch,
 			}, nil
 		}
 	}
