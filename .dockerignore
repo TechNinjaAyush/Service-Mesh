@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+.github
+
+# Local environment variables
+.env
+*.env
+
+# Build outputs
+graph-publisher
+service-mesh
+*.exe
+*.test
+*.out
+*.prof
+bin/
+obj/
+
+# Docker related
+Dockerfile
+.dockerignore
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -34,12 +34,12 @@ var graphResponse model.GraphResponse
 var mu sync.Mutex
 
 func PollingIstio(js nats.JetStreamContext, nc *nats.Conn, jetStreamEnables bool) {
-	graphType := os.Getenv("graphType")
-	duration := os.Getenv("duration")
-	namespaces := os.Getenv("namespaces")
-	BASE_URL := os.Getenv("BASE_URL")
+	baseURL := strings.TrimSpace(os.Getenv("BASE_URL"))
+	namespaces := strings.TrimSpace(os.Getenv("namespaces"))
+	graphType := strings.TrimSpace(os.Getenv("graphType"))
+	duration := strings.TrimSpace(os.Getenv("duration"))
 
-	u, err := url.Parse(BASE_URL)
+	u, err := url.Parse(baseURL)
 
 	if err != nil {
 		log.Fatalf("Failed to parse the URL %v\n", err)
@@ -131,7 +131,7 @@ func PollingIstio(js nats.JetStreamContext, nc *nats.Conn, jetStreamEnables bool
 		nodeMap := make(map[string]string)
 		for i := range graphResponse.Elements.Nodes {
 			node := &graphResponse.Elements.Nodes[i]
-			
+
 			if node.Data.App != "" {
 				nodeMap[node.Data.ID] = node.Data.App
 			}
@@ -170,7 +170,7 @@ func PollingIstio(js nats.JetStreamContext, nc *nats.Conn, jetStreamEnables bool
 						if sourceName == "" {
 							sourceName = edge.Data.Source
 						}
-						
+
 						targetName := nodeMap[edge.Data.Target]
 						if targetName == "" {
 							targetName = edge.Data.Target

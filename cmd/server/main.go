@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"service_mesh/istio"
@@ -25,14 +26,15 @@ func main() {
 	// loading env file
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("failed to load .env file: %v", err)
+		log.Printf("failed to load .env file using runtime env file : %v", err)
 
 	}
 
 	fmt.Print("Connecting to nats server...")
-	nc, err := nats.Connect(nats.DefaultURL, nats.MaxReconnects(-1), nats.ReconnectWait(2*time.Second))
+	nc, err := nats.Connect(os.Getenv("NATS_URL"), nats.MaxReconnects(-1), nats.ReconnectWait(2*time.Second))
 
 	if err != nil {
+		
 		log.Println("Error in connecting nats", err)
 	}
 

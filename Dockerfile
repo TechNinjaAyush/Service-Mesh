@@ -1,18 +1,26 @@
+# Stage 1: Build
+FROM golang:1.25 AS builder
 
-FROM golang:1.25  
+WORKDIR /app
 
+COPY go.mod go.sum ./
 
-WORKDIR /app  
+RUN go mod download
 
-COPY go.mod go.sum ./  
+COPY . .
 
-RUN go mod download  
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build \
+    -ldflags="-w -s" \
+    -a \
+    -installsuffix cgo \
+    -o service-mesh ./cmd/server
 
-COPY . .  
+# Stage 2: Runtime
+FROM  alpine:3.19
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o service-mesh ./cmd/server
+WORKDIR /app
 
+COPY --from=builder /app/service-mesh .
 
-EXPOSE 8080  
-
-CMD ["/app/service-mesh"]
+CMD ["./service-mesh"]
