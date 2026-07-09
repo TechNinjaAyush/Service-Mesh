@@ -16,13 +16,12 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 
 # Stage 2: Runtime
 
-
 FROM gcr.io/distroless/static-debian12
 
-WORKDIR /
+WORKDIR /app
 
-COPY --from=builder /app/service-mesh /service-mesh
+COPY --from=builder /app/service-mesh /app/service-mesh
 
 USER nonroot:nonroot
 
-ENTRYPOINT ["/service-mesh"]
+ENTRYPOINT ["/app/service-mesh"]
