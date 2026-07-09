@@ -52,7 +52,7 @@ jobs:
             cache-to: type=gha,mode=max
   
       - name: Scan Docker Image with Trivy
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
             image-ref: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/observer-agent:${{ github.sha }}
             format: table
