@@ -12,15 +12,17 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build \
     -ldflags="-w -s" \
-    -a \
-    -installsuffix cgo \
-    -o service-mesh ./cmd/server
+       -o service-mesh ./cmd/server
 
 # Stage 2: Runtime
-FROM  alpine:3.19
 
-WORKDIR /app
 
-COPY --from=builder /app/service-mesh .
+FROM gcr.io/distroless/static-debian12
 
-CMD ["./service-mesh"]
+WORKDIR /
+
+COPY --from=builder /app/service-mesh /service-mesh
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/service-mesh"]
