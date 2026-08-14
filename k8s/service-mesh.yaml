@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-mesh-config
+  namespace: default
+data:
+  graphType: app
+  namespaces: default
+  duration: 60s
+  BASE_URL: http://kiali.istio-system.svc.cluster.local:20001/kiali/api/namespaces/graph
+  NATS_URL: nats://nats:4222
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: service-mesh-observer
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: service-mesh-observer
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/log
+      - services
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: service-mesh-observer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: service-mesh-observer
+subjects:
+  - kind: ServiceAccount
+    name: service-mesh-observer
+    namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-mesh
+  namespace: default
+  labels:
+    app: service-mesh
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-mesh
+  template:
+    metadata:
+      labels:
+        app: service-mesh
+    spec:
+      serviceAccountName: service-mesh-observer
+      containers:
+        - name: service-mesh
+          image: asia-south1-docker.pkg.dev/project-e8e2dbb5-cb6b-4e9e-a0b/sre-images/observer-agent:ade7f89c47acc451c36dcb5ab761ae789022103d
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: graphType
+              valueFrom:
+                configMapKeyRef:
+                  name: service-mesh-config
+                  key: graphType
+            - name: namespaces
+              valueFrom:
+                configMapKeyRef:
+                  name: service-mesh-config
+                  key: namespaces
+            - name: duration
+              valueFrom:
+                configMapKeyRef:
+                  name: service-mesh-config
+                  key: duration
+            - name: BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: service-mesh-config
+                  key: BASE_URL
+            - name: NATS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: service-mesh-config
+                  key: NATS_URL
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
