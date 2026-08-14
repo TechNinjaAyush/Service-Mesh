@@ -31,10 +31,12 @@ func main() {
 	}
 
 	fmt.Print("Connecting to nats server...")
-	nc, err := nats.Connect(os.Getenv("NATS_URL"), nats.MaxReconnects(-1), nats.ReconnectWait(2*time.Second))
+	nc, err := nats.Connect(os.Getenv("NATS_URL"), nats.MaxReconnects(-1), nats.ReconnectWait(2*time.Second), nats.RetryOnFailedConnect(true))
+
+	log.Printf("nats url is %s", os.Getenv("NATS_URL"))
 
 	if err != nil {
-		
+
 		log.Println("Error in connecting nats", err)
 	}
 
