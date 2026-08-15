@@ -242,24 +242,30 @@ func PollingIstio(js nats.JetStreamContext, nc *nats.Conn, jetStreamEnables bool
 			continue
 		}
 
-		// publishing graph data to nats using jetstream Enabled
+		// Publishing graph data to NATS.
 
 		shouldPublish := (NewHashString != prevHashString) || forceSnapshot
 
-		if shouldPublish && jetStreamEnables == true {
+		if shouldPublish && jetStreamEnables {
 			_, err = js.Publish("graph.snapshot", data)
-			log.Println("Send graph snapshot to nats using jetstream enabled")
-			prevHashString = NewHashString
+			if err != nil {
+				log.Printf("ERROR publishing graph.snapshot using JetStream: %v", err)
+			} else {
+				log.Printf("Published graph.snapshot successfully using JetStream")
+				prevHashString = NewHashString
+			}
 
-		} else if shouldPublish && jetStreamEnables != true {
+		} else if shouldPublish {
 			err = nc.Publish("graph.snapshot", data)
-			log.Println("Send graph snapshot using default nats")
-			prevHashString = NewHashString
+			if err != nil {
+				log.Printf("ERROR publishing graph.snapshot using Core NATS: %v", err)
+			} else {
+				log.Printf("Published graph.snapshot successfully using Core NATS")
+				prevHashString = NewHashString
+			}
 
 		} else {
-
-			log.Printf("SKIPPING Graph Snapshot...\n")
-
+			log.Printf("SKIPPING Graph Snapshot...")
 		}
 
 		// Cleanup alertedPods for pods that no longer exist
