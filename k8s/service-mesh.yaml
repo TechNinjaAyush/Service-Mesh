@@ -66,7 +66,8 @@ spec:
       serviceAccountName: service-mesh-observer
       containers:
         - name: service-mesh
-          image: asia-south1-docker.pkg.dev/project-e8e2dbb5-cb6b-4e9e-a0b/sre-images/observer-agent:edb8f9b17d3137d2ec5fa8086e5c13fedacc859b
+          image: asia-south1-docker.pkg.dev/project-e8e2dbb5-cb6b-4e9e-a0b/sre-images/observer-agent:09c937506030e8c394e788afa11920ed526d1835
+
           imagePullPolicy: IfNotPresent
           env:
             - name: graphType
